@@ -2,48 +2,31 @@ package com.abhishek.blogapi.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.abhishek.blogapi.blog.security.CustomUserDetailService;
+import com.abhishek.blogapi.security.JwtAuthenticationEntryPoint;
+import com.abhishek.blogapi.security.JwtAuthenticationFilter;
 
-@Configuration
-@EnableWebSecurity
-public class SecurityConfig{
+public class SecurityConfig {
     
     @Autowired
-    private CustomUserDetailService customUserDetailService;
+    private JwtAuthenticationEntryPoint point;
+    @Autowired
+    private JwtAuthenticationFilter filter;
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable()) // or any other customization
-                .authorizeRequests()
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        http.csrf(csrf -> csrf.disable())
+                .authorizeRequests().requestMatchers("/auth/login").permitAll()
                 .anyRequest()
                 .authenticated()
-                .and()
-                .httpBasic(httpBasic -> httpBasic.realmName("xyz"));
-
+                .and().exceptionHandling(ex -> ex.authenticationEntryPoint(point))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
-    @Bean
-	 public AuthenticationManager authManager(HttpSecurity http) 
-	   throws Exception {
-	     return http.getSharedObject(AuthenticationManagerBuilder.class)
-	       .userDetailsService(this.customUserDetailService)
-	       .passwordEncoder(bCryptPasswordEncoder())
-	       .and()
-	       .build();
-	 }
-     @Bean
-	public PasswordEncoder bCryptPasswordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
-
 }
